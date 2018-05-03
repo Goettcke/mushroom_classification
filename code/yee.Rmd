@@ -4,7 +4,7 @@ author: "Jonatan Møller Gøttcke"
 date: "2018 M05 3"
 output: html_document
 ---
-
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # This is for general case setting working directory.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -12,36 +12,33 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Setting working
 ```{r working, include = TRUE} 
-knitr::opts_chunk$set(echo = TRUE)
 library(rstudioapi) 
 library(e1071)
-library(mlbench)
 library(caret)
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # This is for general case setting working directory. 
 ``` 
 
 
 
 ## Loading data
-```{r load data}
+```{r load_data, include=TRUE}
 mushroom_data <- read.csv("../data/agaricus-lepiota.data", header = F )
 mushroom_data_nolabel <- mushroom_data[,2:ncol(mushroom_data)]
 colnames(mushroom_data)[1] = "Class" #Renaming so we know this is the Class
 target <- mushroom_data[,1] #Making a Class array if anything needs it
-target # Contains information the labels of the different mushrooms.
+target[1:10] # Contains information the labels of the different mushrooms.
 
 
 ```
 
 ## Naive Bayes Classifier
-```{r NaïveBayes}
-mushroom_data$Class
+```{r NaïveBayes, include=TRUE}
+mushroom_data$Class[1:20]
 model <- naiveBayes(Class ~ .,data = mushroom_data)
 pred <- predict(model,mushroom_data)
 correct_predictions <- pred == target
 t_correct_predictions <- as.data.frame(correct_predictions)
 length(which(correct_predictions == TRUE %in% t_correct_predictions)) #Counting the number of values that are classified correctly. 
-pred
+pred[1:10]
 
 confutsius_matrix <- confusionMatrix(
                                       factor(pred),
