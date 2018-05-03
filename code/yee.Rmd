@@ -1,0 +1,65 @@
+---
+title: "Applied Machine Learning, Assignment 3"
+author: "Jonatan Møller Gøttcke"
+date: "2018 M05 3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Setting working
+```{r working, include = TRUE} 
+knitr::opts_chunk$set(echo = TRUE)
+library(rstudioapi) 
+library(e1071)
+library(mlbench)
+library(caret)
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # This is for general case setting working directory. 
+``` 
+
+
+
+## Loading data
+```{r load data}
+mushroom_data <- read.csv("../data/agaricus-lepiota.data", header = F )
+mushroom_data_nolabel <- mushroom_data[,2:ncol(mushroom_data)]
+colnames(mushroom_data)[1] = "Class" #Renaming so we know this is the Class
+target <- mushroom_data[,1] #Making a Class array if anything needs it
+target # Contains information the labels of the different mushrooms.
+
+
+```
+
+## Naive Bayes Classifier
+```{r NaïveBayes}
+mushroom_data$Class
+model <- naiveBayes(Class ~ .,data = mushroom_data)
+pred <- predict(model,mushroom_data)
+correct_predictions <- pred == target
+t_correct_predictions <- as.data.frame(correct_predictions)
+length(which(correct_predictions == TRUE %in% t_correct_predictions)) #Counting the number of values that are classified correctly. 
+pred
+
+confutsius_matrix <- confusionMatrix(
+                                      factor(pred),
+                                      factor(target))
+confutsius_matrix # To output the result in comparison with the target. 
+
+```
+
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
