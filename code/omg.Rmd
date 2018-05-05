@@ -1,0 +1,129 @@
+---
+title: "moreFun"
+author: "Jonatan Møller Gøttcke"
+date: "2018 M05 3"
+output: html_document
+---
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # This is for general case setting working directory.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Setting working
+```{r working, include = TRUE} 
+library(rstudioapi) 
+library(e1071)
+library(caret)
+library(randomForest)
+library(ggplot2)
+library(pROC)
+``` 
+
+#Reasoning for choosing the dataset 
+The mushroom dataset, is a very old and well studied dataset. It is interesting because it only contains nominal data, and I don't have much experience with working with nominal data. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform extraordinarily well in this domain.     
+
+
+
+
+## Loading data
+```{r load_data, include=TRUE}
+mushroom_data <- read.csv("../data/agaricus-lepiota.data", header = F,stringsAsFactors = TRUE)
+names <- c("Class", "cap-shape", "cap-surface", "cap-color", "bruises", "odor", "gill-attachment", "gill-spacing", "gill-size", "gill-color", "stalk-shape", "stalk-root", "stalk-surface-above-ring", "stalk-surface-below-ring", "stalk-color-above-ring", "stalk-color-below-ring", "veil-type", "veil-color", 
+"ring-number", "ring-type", "spore-print-color", "population", "habitat")
+length(names)
+ncol(mushroom_data)
+
+
+colnames(mushroom_data) = names #Renaming so we know this is the Class, and what the attributes are. Could also just have changed in the file, but in this way the reader can tag along. 
+target <- mushroom_data[,1] #Making a Class array if anything needs it
+target[1:10] # Contains information the labels of the different mushrooms.
+mushroom_data[2,]
+
+```
+
+
+##Summary 
+```{r summary, include=TRUE}
+summary(mushroom_data)
+set.seed(123) #Setting the random seed, for reproducibility 
+``` 
+
+So we have two classes edible and poisonous. We have 51.17 percent of the positive (edible class), so approximately equal class frequencies. 
+Here we can see that column 17 only includes attributes with the value p, so this is a bit useless, and the randomForest algorithm "rf", as used in crossvalidation can handle this, so these are omitted. This attribute describes the veil-type which is a either partial or universal. In mushrooms such as the *amanita caesarea* the veil is universal when the musfhroom is young, and is broken as the mushroom grows. Ths is very common for adult mushrooms, and some like the famous *fly amanita* or as known by mycologist *amanita muscaria* has a very visible partial veil, which is the white dots on the red cap, that makes it so characteristic. It would be outside of the scope of this task to give more insight into the variables, but the reader can find more information here <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names>
+
+
+
+```{r dropping_values, include=TRUE}
+indices_without_17 <- c(1:16,18:ncol(mushroom_data))
+ # The 17'th column only contains 1 attribute value, so it is omitted, because is useless information. 
+mushroom_data <- mushroom_data[,indices_without_17]
+mushroom_data_nolabel <- mushroom_data[,2:ncol(mushroom_data)]
+  summary(mushroom_data)
+``` 
+
+To have some test data and some training data, I do a simple split, so that we can build a model on a part of the data and validate on the other part of the data. 
+
+##Splitting
+```{r splitting, include=TRUE}
+  split_index <- ceiling(nrow(mushroom_data) * 0.8)
+  train_data <- mushroom_data[1:split_index,]
+  test_data <- mushroom_data[(split_index +1):nrow(mushroom_data),]
+```
+
+
+## Naive Bayes Classifier
+```{r NaïveBayes, include=TRUE}
+model <- naiveBayes(Class ~ .,data = train_data)
+pred <- predict(model,test_data)
+correct_predictions <- pred == test_data[,1]
+#correct_predictions
+t_correct_predictions <- as.data.frame(correct_predictions) #This is to get an overview of which are correctly classified and which are incorrectly classified. 
+length(which(correct_predictions == TRUE %in% t_correct_predictions)) #Counting the number of values that are classified correctly. 
+pred[1:10]
+
+nb_confucius_matrix <- confusionMatrix(
+                                      factor(pred),
+                                      factor(test_data[,1]))
+nb_confucius_matrix # To output the result in comparison with the target. 
+```
+
+
+As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are eadible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making sensitive classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. Here the sensitivity is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible.  This is not good enough.! Hence we continue the search for a better classifier.   
+
+
+
+##Random Forest Classifier 
+```{r random_forest, include = TRUE}
+  rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=10)
+  
+#rf_model$predicted
+  pred <- predict(rf_model, test_data)
+  rf_confucius_matrix <- confusionMatrix(factor(pred),test_data[,1])
+  rf_confucius_matrix
+``` 
+
+
+
+Here we can see, that with the split at 90%, the model still performs impeccable. If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
+
+To see which attributes are important for the decision tree's we can make a variable importance plot. 
+
+##Variable importance plot 
+```{r varimpplot, include=TRUE} 
+varImpPlot(rf_model,main ="Variable Importance Plot")
+```
+
+As we can see here
+
+
+Now we have seen some classifiers, let's plot some ROC curves. 
+```{r roc_curves,include=TRUE}
+roc()
+#TODO do roc curve and var imp plot.
+
+
+
+
+```
