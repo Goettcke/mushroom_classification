@@ -18,28 +18,23 @@ library(e1071)
 library(caret)
 library(randomForest)
 library(ggplot2)
-library(pROC)
 ``` 
 
 #Reasoning for choosing the dataset 
-The mushroom dataset, is a very old and well studied dataset. It is interesting because it only contains nominal data, and I don't have much experience with working with nominal data. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform extraordinarily well in this domain.     
-
-
+The mushroom dataset, is a very old and well studied dataset. It is interesting because it only contains nominal data, and I don't have much experience with working with nominal data. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform well in this domain, unlike more traditional models. The dataset was also chosen because of the relatively high dimensionality and number of samples.      
 
 
 ## Loading data
 ```{r load_data, include=TRUE}
 mushroom_data <- read.csv("../data/agaricus-lepiota.data", header = F,stringsAsFactors = TRUE)
-names <- c("Class", "cap-shape", "cap-surface", "cap-color", "bruises", "odor", "gill-attachment", "gill-spacing", "gill-size", "gill-color", "stalk-shape", "stalk-root", "stalk-surface-above-ring", "stalk-surface-below-ring", "stalk-color-above-ring", "stalk-color-below-ring", "veil-type", "veil-color", 
-"ring-number", "ring-type", "spore-print-color", "population", "habitat")
+names <- c("Class", "capshape","capsurface","capcolor","bruises","odor","gillattachment","gillspacing","gillsize","gillcolor","stalkshape","stalkroot","stalksurfaceabovering","stalksurfacebelowring","stalkcolorabovering","stalkcolorbelowring","veiltype","veilcolor",
+"ringnumber","ringtype","sporeprintcolor","population","habitat")
 length(names)
 ncol(mushroom_data)
 
 
 colnames(mushroom_data) = names #Renaming so we know this is the Class, and what the attributes are. Could also just have changed in the file, but in this way the reader can tag along. 
-target <- mushroom_data[,1] #Making a Class array if anything needs it
-target[1:10] # Contains information the labels of the different mushrooms.
-mushroom_data[2,]
+colnames(mushroom_data)
 
 ```
 
@@ -60,7 +55,7 @@ indices_without_17 <- c(1:16,18:ncol(mushroom_data))
  # The 17'th column only contains 1 attribute value, so it is omitted, because is useless information. 
 mushroom_data <- mushroom_data[,indices_without_17]
 mushroom_data_nolabel <- mushroom_data[,2:ncol(mushroom_data)]
-  summary(mushroom_data)
+summary(mushroom_data)
 ``` 
 
 To have some test data and some training data, I do a simple split, so that we can build a model on a part of the data and validate on the other part of the data. 
@@ -97,11 +92,13 @@ As can be seen here from the confusion matrix, there are only few true positives
 ##Random Forest Classifier 
 ```{r random_forest, include = TRUE}
   rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=10)
-  
+
 #rf_model$predicted
   pred <- predict(rf_model, test_data)
   rf_confucius_matrix <- confusionMatrix(factor(pred),test_data[,1])
   rf_confucius_matrix
+  avg_error <- mean(pred != test_data[,1])
+  avg_error # Just another evaluation measure
 ``` 
 
 
@@ -115,15 +112,20 @@ To see which attributes are important for the decision tree's we can make a vari
 varImpPlot(rf_model,main ="Variable Importance Plot")
 ```
 
-As we can see here
+In the variable importance plot, we can interpret the MeanDecreaseGini for a variable, as the variables ability to decrease the impurity. The mean is then how well this variable decrease the impurity on average over it splits. It is clear that *odor* is by far the most important variable, and then *gillcolor* and *stalksurfaceabovering*. The importance of the variables, can be used to decrease the dimensionality, by only using the most important variables, this will decrease the variance of the model, and then be a part of avoiding overfitting the model, or as a tool to decrease computational complexity. 
 
 
 Now we have seen some classifiers, let's plot some ROC curves. 
 ```{r roc_curves,include=TRUE}
-roc()
 #TODO do roc curve and var imp plot.
 
+library(caret)
+library(mlbench)
+library(pROC)
+library(mlbench)
 
-
-
+pred_t <- as.numeric(pred == "e")  #Done to make our data numeric so roc can understand the p and e names. 
+test_data_t <- as.numeric(test_data[,1] == "e")
+test_data_t
+roc(test_data_t,pred_t,plot=TRUE)
 ```
