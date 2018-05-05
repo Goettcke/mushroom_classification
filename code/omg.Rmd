@@ -18,10 +18,16 @@ library(e1071)
 library(caret)
 library(randomForest)
 library(ggplot2)
+library(knitr)
+library(ROCR)
+library(DiagrammeR)
+library(caret)
+library(mlbench)
+library(pROC)
 ``` 
 
 #Reasoning for choosing the dataset 
-The mushroom dataset, is a very old and well studied dataset. It is interesting because it only contains nominal data, and I don't have much experience with working with nominal data. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform well in this domain, unlike more traditional models. The dataset was also chosen because of the relatively high dimensionality and number of samples.      
+The mushroom dataset, is an older dataset from 1987 and is quite well studied. It is classified as a classification dataset on the UCI website, because it contains labled data, and has been used in many classification studies. It is interesting because it only contains nominal/categorical data, and my experience with nominal data is limited. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform well in this domain, unlike some of the other models we have seen in the course such as Naïve Bayes. The dataset was also chosen because of the relatively high dimensionality and relatively high number of samples.      
 
 
 ## Loading data
@@ -118,14 +124,15 @@ In the variable importance plot, we can interpret the MeanDecreaseGini for a var
 Now we have seen some classifiers, let's plot some ROC curves. 
 ```{r roc_curves,include=TRUE}
 #TODO do roc curve and var imp plot.
-
-library(caret)
-library(mlbench)
-library(pROC)
-library(mlbench)
-
 pred_t <- as.numeric(pred == "e")  #Done to make our data numeric so roc can understand the p and e names. 
 test_data_t <- as.numeric(test_data[,1] == "e")
 test_data_t
 roc(test_data_t,pred_t,plot=TRUE)
+
+
+pred_obj <- prediction(pred_t,test_data_t)
+pred_obj
+
+rf_performance <- performance(pred_obj,measure="tpr",x.measure="fpr",col = "green")
+plot(perf,main = "ROC Curve for RandomForest on Mushrooms data") # This plot is added because it gives a little bit more clarity. 
 ```
