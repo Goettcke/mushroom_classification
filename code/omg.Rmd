@@ -24,6 +24,16 @@ library(DiagrammeR)
 library(caret)
 library(mlbench)
 library(pROC)
+#TODO Show tree growth, and argue, that this is how you set your parameters, in the 
+#TODO Argue about the class distribution on the data that we're trying to predict, as shown below  
+#x <- summary(test_data)
+#x[1:2]
+#TODO pretty plot confusion matrices
+#TODO summarize the avg. error in a nice bar plot
+#TODO represent the data in a customized way, so that it is possible to see the data visually. Maybe make barplots, that show how many of the samples have the different categories for each variable. So like in odor 2000 stinky 3000 føj for helvede. and so on. 
+#Compare the AUC for all the algorithms. 
+#TODO Write conclusion which  sums the insights, and shows future work, that could be done.
+#Write about the selection of methods, and why these precisely were chosen.
 ``` 
 
 #Reasoning for choosing the dataset 
@@ -77,21 +87,24 @@ To have some test data and some training data, I do a simple split, so that we c
 ## Naive Bayes Classifier
 ```{r NaïveBayes, include=TRUE}
 model <- naiveBayes(Class ~ .,data = train_data)
-pred <- predict(model,test_data)
-correct_predictions <- pred == test_data[,1]
+nb_pred <- predict(model,test_data)
+correct_predictions <- nb_pred == test_data[,1]
 #correct_predictions
 t_correct_predictions <- as.data.frame(correct_predictions) #This is to get an overview of which are correctly classified and which are incorrectly classified. 
 length(which(correct_predictions == TRUE %in% t_correct_predictions)) #Counting the number of values that are classified correctly. 
-pred[1:10]
+
+
+nb_avg_error <- mean(nb_pred != test_data[,1])
+nb_avg_error # Just another evaluation measure
 
 nb_confucius_matrix <- confusionMatrix(
-                                      factor(pred),
+                                      factor(nb_pred),
                                       factor(test_data[,1]))
 nb_confucius_matrix # To output the result in comparison with the target. 
 ```
 
 
-As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are eadible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making sensitive classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. Here the sensitivity is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible.  This is not good enough.! Hence we continue the search for a better classifier.   
+As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making sensitive classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. Here the sensitivity is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible.  This is not good enough.! Hence we continue the search for a better classifier.   
 
 
 
@@ -100,10 +113,10 @@ As can be seen here from the confusion matrix, there are only few true positives
   rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=10)
 
 #rf_model$predicted
-  pred <- predict(rf_model, test_data)
-  rf_confucius_matrix <- confusionMatrix(factor(pred),test_data[,1])
+  rf_pred <- predict(rf_model, test_data)
+  rf_confucius_matrix <- confusionMatrix(factor(rf_pred),test_data[,1])
   rf_confucius_matrix
-  avg_error <- mean(pred != test_data[,1])
+  avg_error <- mean(rf_pred != test_data[,1])
   avg_error # Just another evaluation measure
 ``` 
 
@@ -121,18 +134,26 @@ varImpPlot(rf_model,main ="Variable Importance Plot")
 In the variable importance plot, we can interpret the MeanDecreaseGini for a variable, as the variables ability to decrease the impurity. The mean is then how well this variable decrease the impurity on average over it splits. It is clear that *odor* is by far the most important variable, and then *gillcolor* and *stalksurfaceabovering*. The importance of the variables, can be used to decrease the dimensionality, by only using the most important variables, this will decrease the variance of the model, and then be a part of avoiding overfitting the model, or as a tool to decrease computational complexity. 
 
 
+##Roc curves for model comparison
 Now we have seen some classifiers, let's plot some ROC curves. 
 ```{r roc_curves,include=TRUE}
-#TODO do roc curve and var imp plot.
-pred_t <- as.numeric(pred == "e")  #Done to make our data numeric so roc can understand the p and e names. 
 test_data_t <- as.numeric(test_data[,1] == "e")
-test_data_t
-roc(test_data_t,pred_t,plot=TRUE)
 
 
-pred_obj <- prediction(pred_t,test_data_t)
-pred_obj
+nb_pred_t <- as.numeric(nb_pred == "e")
+nb_pred_obj <- prediction(nb_pred_t,test_data_t)
+nb_performance <- performance(nb_pred_obj,measure="tpr",x.measure="fpr")
+plot(nb_performance,main = "ROC Curve for RandomForest on Mushroom data",col = "blue",lwd=3) 
+abline(a = 0, b = 1, lwd = 2, lty = 2) #Inserting a diagonal line in the ROC plot 
 
-rf_performance <- performance(pred_obj,measure="tpr",x.measure="fpr",col = "green")
-plot(perf,main = "ROC Curve for RandomForest on Mushrooms data") # This plot is added because it gives a little bit more clarity. 
+
+rf_pred_t <- as.numeric(rf_pred == "e")  #Done to make our data numeric so roc can understand the p and e names. 
+
+#roc(test_data_t,pred_t,plot=TRUE) #I disliked this roc curve, because it was not visually precise enough. 
+
+rf_pred_obj <- prediction(rf_pred_t,test_data_t)
+
+rf_performance <- performance(rf_pred_obj,measure="tpr",x.measure="fpr")
+plot(rf_performance,main = "ROC Curve for RandomForest on Mushroom data",col = "blue",lwd=3) # This plot is added because it gives a little bit more clarity.
+abline(a = 0, b = 1, lwd = 2, lty = 2)
 ```
