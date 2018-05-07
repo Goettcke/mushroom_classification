@@ -94,8 +94,8 @@ print(attribute_boxplot + ggtitle(paste(names(mushroom_data[index]), "distributi
 }
 ```
 
-#TODO Write some awesome comments about the different attributes.
-
+###Attributes
+Here the attributes are shown as boxplots, to see how the values for each attribute are distributed dependant on the class label. This way of plotting the data gives us a clear insight into how we can distinguish poisonous mushrooms from edible mushrooms, attribute by attribute and give an indication of what the classifiers will probably learn. The data is plotted in this way because it is nominal/categorical, and it doesn't make much sense to plot it in a cartesian coordinate system. Another reason for plotting the data in this manner, is because of the high dimensionality, so if we did 2-dimensional plots, there would be 22 choose 2 (231) combinations of plots to show. 
 ##Defining useful functions
 ```{r useful_functions, include=TRUE} 
 precision <- function(confucius_matrix) {confucius_matrix$table[1,1]/(confucius_matrix$table[1,1] + confucius_matrix$table[2,1])}
