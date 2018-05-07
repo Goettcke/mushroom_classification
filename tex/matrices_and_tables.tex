@@ -54,6 +54,18 @@
 \end{figure}
 
 
+\begin{figure}
+	\textbf{Confusion Matrix for K Nearest Neighbors}\par\medskip
+	\begin{tabular}{c >{\bfseries}r @{\hspace{0.7em}}c @{\hspace{0.4em}}c @{\hspace{0.7em}}l}
+		\multirow{10}{*}{\parbox{1.1cm}{\bfseries\raggedleft actual\\ label}} & 
+		& \multicolumn{2}{c}{\bfseries Predicted label} & \\
+		& & \bfseries e & \bfseries p & \bfseries  \\
+		& e$'$ & \MyBox{469}{TP} & \MyBox{0}{FN} \\ [2.4em]
+		& p$'$ & \MyBox{38}{FP} & \MyBox{1117}{\textsl{}TN} 
+	\end{tabular}
+\end{figure}
+
+
 \begin{table}[]
 	\centering
 	\caption{Evaluation Comparison Table}

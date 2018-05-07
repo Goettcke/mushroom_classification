@@ -29,12 +29,8 @@ library(igraph)
 library(ggraph)
 library(class) # Order is important (masks knn function from igraph)
 library(nnet)
-#TODO Show tree growth, and argue, that this is how you set your parameters, in the 
-#TODO Argue about the class distribution on the data that we're trying to predict, as shown below  
-#x <- summary(test_data)
+ #x <- summary(test_data)
 #x[1:2]
-#TODO summarize the avg. error in a nice bar plot
-#Compare the AUC for all the algorithms. 
 #TODO Write conclusion which  sums the insights, and shows future work, that could be done.
 #Write about the selection of methods, and why these precisely were chosen.
 ``` 
@@ -90,12 +86,15 @@ value = c(mushroom_data[which(mushroom_data[,1] =="e"),index],mushroom_data[whic
 data = data.frame(names,value)
 attribute_boxplot <- qplot( x=names , y=value , data=data , geom=c("boxplot","jitter") , fill=names)
 ?qplot
-print(attribute_boxplot + ggtitle(paste(names(mushroom_data[index]), "distribution in edible and poisonous mushrooms"), levels(mushroom_data[,]))) 
+print(attribute_boxplot + ggtitle(paste(names(mushroom_data[index]), "distribution in edible and poisonous mushrooms")))
+
 }
 ```
 
 ###Attributes
 Here the attributes are shown as boxplots, to see how the values for each attribute are distributed dependant on the class label. This way of plotting the data gives us a clear insight into how we can distinguish poisonous mushrooms from edible mushrooms, attribute by attribute and give an indication of what the classifiers will probably learn. The data is plotted in this way because it is nominal/categorical, and it doesn't make much sense to plot it in a cartesian coordinate system. Another reason for plotting the data in this manner, is because of the high dimensionality, so if we did 2-dimensional plots, there would be 22 choose 2 (231) combinations of plots to show. 
+Some very similar attributes are *capcolor* and *capsurface* and very dissimilar attributes are for instance *odor* where some oder's in eadible mushrooms, are not at all present in poisonous mushrooms, for instance the anis smell (value 4), if this attribute is present, then we're sure, that the mushroom is edible. The different values for each attribute here depicted by numbers, are just numeric representation of the levels. For more insigt into the attribute levels, look at <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names> . 
+
 ##Defining useful functions
 ```{r useful_functions, include=TRUE} 
 precision <- function(confucius_matrix) {confucius_matrix$table[1,1]/(confucius_matrix$table[1,1] + confucius_matrix$table[2,1])}
@@ -118,6 +117,7 @@ eval_summary <- function(confucius_matrix){
   test_data <- mushroom_data[(split_index +1):nrow(mushroom_data),]
 ```
 
+Splitting the data into a training data-set and a test set, is done because all the tested algorithms, can work with this partitioning, the cross-validation implementations in R might not have support for all of the tested algorithms, but this is of course also an option. The split results in a roughly 2/3 majority of negative labled instances in the test data, but as this is dichotomous classification and the correct prediction of either is seen as a correct classification, hence this is not seen as a bias.   
 
 ## Naive Bayes Classifier
 ```{r NaïveBayes, include=TRUE}
@@ -135,12 +135,13 @@ nb_avg_error # Just another evaluation measure
 nb_confucius_matrix <- confusionMatrix(
                                       factor(nb_pred),
                                       factor(test_data[,1]))
-nb_confucius_matrix # To output the result in comparison with the target. 
+#nb_confucius_matrix # To output the result in comparison with the target. 
+eval_summary(nb_confucius_matrix)
+
 ```
 
 
-As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making sensitive classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. Here the sensitivity is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible.  This is not good enough.! Hence we continue the search for a better classifier.   
-
+As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making precise classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. The precision is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible. 
 
 ##Knn classifier 
 ```{r Knn, include = TRUE} 
@@ -183,38 +184,56 @@ eval_summary(knn_confucius_matrix)
 
 ```
 
-Choosing the right K in the K nearest neighbor classifier is a hard task. Duda et al. popularized, that a good rule of thumb is to take the square root of the number of training instances. The area around this rule of thumb has been explored, but surprisingly found to be very limiting. Hence a large area, around this has been used to find a good k. This is based on the accuracy so hundreds of runs have been performed. A perhaps more application specific evaluation would be to minimize the number of false positives, because that could lead to poisoning.    
-
-
-
+Choosing the right K in the K nearest neighbor classifier is a hard task. Duda et al. popularized, that a good rule of thumb is to take the square root of the number of training instances. An interval around this rule of thumb has been explored, but surprisingly found to be very limiting. Hence a larger interval, has been used to find a good k. This is based on the accuracy and hundreds of runs have been performed to find the best k. A perhaps more application specific evaluation would be to minimize the number of false positives / maximize the precision, because false positives in this specific case are potentially lethal. 
 
 
 ##Random Forest Classifier 
 ```{r random_forest, include = TRUE}
   rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=30)
+  
+accuracy_list <- c()  
+  for (i in 1:50) {
+    rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=i)
+    rf_pred <- predict(rf_model, test_data)
+    rf_confucius_matrix <- confusionMatrix(factor(rf_pred),test_data[,1])
+    accuracy_list <- c(accuracy_list, accuracy(rf_confucius_matrix))
+    if(accuracy(rf_confucius_matrix) == 1) {
+      break; 
+    }
+  }
+
+accuracy_list
+barplot(accuracy_list,main="Accuracy change with number of trees")
+
+optimal_nr_trees <- which.is.max(accuracy_list)
+
+paste("Optimal nr_of_trees: ", optimal_nr_trees, " accuracy: ", accuracy_list[optimal_nr_trees])
 
 #rf_model$predicted
-  rf_pred <- predict(rf_model, test_data)
-  rf_confucius_matrix <- confusionMatrix(factor(rf_pred),test_data[,1])
-  rf_confucius_matrix
-  avg_error <- mean(rf_pred != test_data[,1])
-  avg_error # Just another evaluation measure
+rf_pred <- predict(rf_model, test_data)
+rf_confucius_matrix <- confusionMatrix(factor(rf_pred),test_data[,1])
+rf_confucius_matrix
+  
+avg_error <- mean(rf_pred != test_data[,1])
+avg_error # Just another evaluation measure
+eval_summary(rf_confucius_matrix)  
+  
 ``` 
 
 
 
-With a split at 80% training data and 20% test, the model performs impeccable. The random forest only takes the number of trees as argument, and here it was possible to obtain a perfect classification, with an accuracy of 1, when building 30 trees. The number of trees were incremented until a satisfying result were achieved, 
+With a split at 80% training data and 20% test, the model performs impeccable i.e perfectly. The random forest only takes the number of trees as argument. The number of trees were incremented until a satisfying result were achieved, as can be seen in the barplot.  
 
-If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
+#If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
 
-To see which attributes are important for the decision tree's we can make a variable importance plot. 
+To see which attributes are important for the decision trees we can make a variable importance plot. 
 
 ##Variable importance plot 
 ```{r varimpplot, include=TRUE} 
 varImpPlot(rf_model,main ="Variable Importance Plot")
 ```
 
-In the variable importance plot, we can interpret the MeanDecreaseGini for a variable, as the variables ability to decrease the impurity. The mean is then how well this variable decrease the impurity on average over it splits. It is clear that *odor* is by far the most important variable, and then *gillcolor* and *stalksurfaceabovering*. The importance of the variables, can be used to decrease the dimensionality, by only using the most important variables, this will decrease the variance of the model, and then be a part of avoiding overfitting the model, or as a tool to decrease computational complexity. 
+In the variable importance plot, we can interpret the MeanDecreaseGini for a variable, as the variables ability to decrease the impurity. The mean is then how well this variable decrease the impurity on average over the splits where it's used. It is clear that *odor* is by far the most important variable, and then other attributes are less important, and by far according to MeanDecreaseGini. The importance of the variables, can be used to decrease the dimensionality, by only using the most important variables, this will decrease the variance of the model, and increase the bias. 
 
 
 ##Plotting the randomForest
@@ -273,29 +292,28 @@ tree_func <- function(final_model,
 }
 
 tree_num <- 1
-
-tree_func(rf_model, tree_num)
-
-
-
 ```
-Here's a tree to give insigt to how a tree in our plot looks like. We have so few trees, that it is possible to get an overview of the entire randomForest model. 
+
+```{r plotting_rf, include = TRUE}
+tree_func(rf_model, tree_num)
+```
+The tree here gives a bit of insigt to how a tree the randomForrest looks like. With this small number of trees used to achieve perfect classification it is possible to get insigt into how the randomForrest makes decisions. 
 
 
 ##Confusion Matrices for model comparison 
 The confusion matrices are put here, for comparison. 
 
 ![Caption](confusion_nb.PNG) 
+![Caption](confusion_knn.PNG)
 ![Caption](confusion_rf.PNG)
 
 ## Precision, recall, f1
 #TODO insert precision, recall and f1 measure
 
-##Roc curves for model comparison
+##Results 
 Now we have seen some classifiers, let's plot some ROC curves. 
 ```{r roc_curves,include=TRUE}
 test_data_t <- as.numeric(test_data[,1] == "e")
-
 
 nb_pred_t <- as.numeric(nb_pred == "e")
 nb_pred_obj <- prediction(nb_pred_t,test_data_t)
@@ -328,8 +346,9 @@ abline(a = 0, b = 1, lwd = 2, lty = 2)
 rf_roc_auc <- performance(rf_pred_obj,measure = "auc")
 rf_roc_auc@y.values # Gives the auc value
 
-
-
-
-
 ```
+![Caption](eval_summary.PNG)
+
+
+##Conclusion 
+Overall in this mini-study, the clear winner is the *randomForest*. There are many other methods, that could perform equivalently well, but it's interesting that Naïve Bayes performs so poorly in comparison with knn and randomForest. In this mushroom datasets, it was shown, that odor is a very important feature 

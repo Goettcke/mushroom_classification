@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6630 64-bit) (preloaded format=pdflatex 2018.4.22)  7 MAY 2018 14:55
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6630 64-bit) (preloaded format=pdflatex 2018.4.22)  7 MAY 2018 17:53
 entering extended mode
 **./matrices_and_tables.tex
 (matrices_and_tables.tex
@@ -610,10 +610,10 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 
 LaTeX Warning: No positions in optional float specifier.
-               Default added (so using `tbp') on input line 57.
+               Default added (so using `tbp') on input line 69.
 
 
-Overfull \hbox (60.18144pt too wide) in paragraph at lines 61--68
+Overfull \hbox (60.18144pt too wide) in paragraph at lines 73--80
  [][] 
  []
 
@@ -624,7 +624,7 @@ Overfull \hbox (60.18144pt too wide) in paragraph at lines 61--68
 Here is how much of TeX's memory you used:
  3159 strings out of 493305
  43277 string characters out of 3129367
- 113170 words of memory out of 3000000
+ 115170 words of memory out of 3000000
  6647 multiletter control sequences out of 15000+200000
  6605 words of font info for 26 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -635,7 +635,7 @@ s/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmbx12.pfb><C:/Users/moller/AppData
 /Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/m
 oller/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy7.pf
 b>
-Output written on matrices_and_tables.pdf (2 pages, 52355 bytes).
+Output written on matrices_and_tables.pdf (2 pages, 53566 bytes).
 PDF statistics:
  25 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
