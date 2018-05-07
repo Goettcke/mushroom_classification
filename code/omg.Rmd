@@ -27,12 +27,13 @@ library(pROC)
 library(dplyr)
 library(igraph)
 library(ggraph)
+library(class) # Order is important (masks knn function from igraph)
+library(nnet)
 #TODO Show tree growth, and argue, that this is how you set your parameters, in the 
 #TODO Argue about the class distribution on the data that we're trying to predict, as shown below  
 #x <- summary(test_data)
 #x[1:2]
 #TODO summarize the avg. error in a nice bar plot
-#TODO represent the data in a customized way, so that it is possible to see the data visually. Maybe make barplots, that show how many of the samples have the different categories for each variable. So like in odor 2000 stinky 3000 føj for helvede. and so on. 
 #Compare the AUC for all the algorithms. 
 #TODO Write conclusion which  sums the insights, and shows future work, that could be done.
 #Write about the selection of methods, and why these precisely were chosen.
@@ -95,6 +96,21 @@ print(attribute_boxplot + ggtitle(paste(names(mushroom_data[index]), "distributi
 
 #TODO Write some awesome comments about the different attributes.
 
+##Defining useful functions
+```{r useful_functions, include=TRUE} 
+precision <- function(confucius_matrix) {confucius_matrix$table[1,1]/(confucius_matrix$table[1,1] + confucius_matrix$table[2,1])}
+recall <- function(confucius_matrix){confucius_matrix$table[1,1]/(confucius_matrix$table[1,1] + confucius_matrix$table[1,2])}
+f1_measure <- function(confucius_matrix) {2*precision(confucius_matrix)*recall(confucius_matrix)/(precision(confucius_matrix) + recall(confucius_matrix))}
+accuracy <- function(confucius_matrix){(confucius_matrix$table[1,1]+confucius_matrix$table[2,2])/(sum(confucius_matrix$table))}
+eval_summary <- function(confucius_matrix){
+  print(paste("precision: ", precision(confucius_matrix)))
+  print(paste("recall:", recall(confucius_matrix)))
+  print(paste("f1_measure: ", f1_measure(confucius_matrix)))
+  print(paste("accuracy: ", accuracy(confucius_matrix)))
+}
+
+```
+
 ##Splitting
 ```{r splitting, include=TRUE}
   split_index <- ceiling(nrow(mushroom_data) * 0.8)
@@ -126,6 +142,52 @@ nb_confucius_matrix # To output the result in comparison with the target.
 As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making sensitive classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. Here the sensitivity is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible.  This is not good enough.! Hence we continue the search for a better classifier.   
 
 
+##Knn classifier 
+```{r Knn, include = TRUE} 
+knn_train_data <- as.data.frame(sapply(train_data[,2:ncol(train_data)],as.integer)) # Changing the nominal data into integers, for knn to be able to understand it.
+knn_test_data <- as.data.frame(sapply(test_data[,2:ncol(train_data)],as.integer))
+target <- train_data[,1]
+
+max_val = 0
+best_K = -1
+
+measure_list <- c()
+for (i in 1:300) {
+  knn_pred <- knn(knn_train_data,knn_test_data, target, k = i)
+  knn_confucius_matrix <- confusionMatrix(factor(knn_pred),factor(test_data[,1]))
+  #print(f1_measure(knn_confucius_matrix))
+  measure_list <-c(measure_list, accuracy(knn_confucius_matrix) )
+}
+
+optimal_k <- which.is.max(measure_list)
+
+paste("Optimal k:", optimal_k, " accuracy:", measure_list[optimal_k])
+max(measure_list)
+
+
+knn_pred <- knn(knn_train_data,knn_test_data, target, k = optimal_k)
+#knn_pred # If we want to see the predictions
+
+knn_confucius_matrix <- confusionMatrix(factor(knn_pred),factor(test_data[,1]))
+knn_confucius_matrix 
+
+knn_precision <- precision(knn_confucius_matrix)
+knn_recall <- recall(knn_confucius_matrix) 
+knn_f1_measure <- f1_measure(knn_confucius_matrix)
+knn_accuracy <- f1_measure(knn_confucius_matrix)
+
+
+knn_avg_error <- mean(knn_pred != test_data[,1])
+knn_avg_error
+eval_summary(knn_confucius_matrix)
+
+```
+
+Choosing the right K in the K nearest neighbor classifier is a hard task. Duda et al. popularized, that a good rule of thumb is to take the square root of the number of training instances. The area around this rule of thumb has been explored, but surprisingly found to be very limiting. Hence a large area, around this has been used to find a good k. This is based on the accuracy so hundreds of runs have been performed. A perhaps more application specific evaluation would be to minimize the number of false positives, because that could lead to poisoning.    
+
+
+
+
 
 ##Random Forest Classifier 
 ```{r random_forest, include = TRUE}
@@ -141,7 +203,7 @@ As can be seen here from the confusion matrix, there are only few true positives
 
 
 
-Here we can see, that with the split at 80%, the model performs impeccable. The random forest only takes the number of trees as argument, and here it was possible to obtain a perfect classification, with an accuracy of 1, when building 30 trees. The number of trees were incremented until a satisfying result were achieved, 
+With a split at 80% training data and 20% test, the model performs impeccable. The random forest only takes the number of trees as argument, and here it was possible to obtain a perfect classification, with an accuracy of 1, when building 30 trees. The number of trees were incremented until a satisfying result were achieved, 
 
 If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
 
@@ -240,6 +302,18 @@ nb_pred_obj <- prediction(nb_pred_t,test_data_t)
 nb_performance <- performance(nb_pred_obj,measure="tpr",x.measure="fpr")
 plot(nb_performance,main = "ROC Curve for RandomForest on Mushroom data",col = "blue",lwd=3) 
 abline(a = 0, b = 1, lwd = 2, lty = 2) #Inserting a diagonal line in the ROC plot 
+nb_roc_auc <- performance(nb_pred_obj,measure = "auc")
+nb_roc_auc@y.values # Gives the auc value
+
+
+knn_pred_t <- as.numeric(knn_pred == "e")
+knn_pred_obj <- prediction(knn_pred_t, test_data_t)
+knn_performance <- performance(knn_pred_obj,measure = "tpr", x.measure = "fpr")
+
+plot(knn_performance,main = "ROC Curve for RandomForest on Mushroom data",col = "blue",lwd=3)
+abline(a = 0, b = 1, lwd = 2, lty = 2)
+knn_roc_auc <- performance(knn_pred_obj,measure = "auc")
+knn_roc_auc@y.values # Gives the auc value
 
 
 rf_pred_t <- as.numeric(rf_pred == "e")  #Done to make our data numeric so roc can understand the p and e names. 
@@ -251,4 +325,11 @@ rf_pred_obj <- prediction(rf_pred_t,test_data_t)
 rf_performance <- performance(rf_pred_obj,measure="tpr",x.measure="fpr")
 plot(rf_performance,main = "ROC Curve for RandomForest on Mushroom data",col = "blue",lwd=3) # This plot is added because it gives a little bit more clarity.
 abline(a = 0, b = 1, lwd = 2, lty = 2)
+rf_roc_auc <- performance(rf_pred_obj,measure = "auc")
+rf_roc_auc@y.values # Gives the auc value
+
+
+
+
+
 ```
