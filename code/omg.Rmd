@@ -1,5 +1,5 @@
 ---
-title: "moreFun"
+title: "4 hours of fun, assignment 4 DM855"
 author: "Jonatan Møller Gøttcke"
 date: "2018 M05 3"
 output: html_document
@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
-## Setting working
+## Setup of working
 ```{r working, include = TRUE} 
 library(rstudioapi) 
 library(e1071)
@@ -24,11 +24,13 @@ library(DiagrammeR)
 library(caret)
 library(mlbench)
 library(pROC)
+library(dplyr)
+library(igraph)
+library(ggraph)
 #TODO Show tree growth, and argue, that this is how you set your parameters, in the 
 #TODO Argue about the class distribution on the data that we're trying to predict, as shown below  
 #x <- summary(test_data)
 #x[1:2]
-#TODO pretty plot confusion matrices
 #TODO summarize the avg. error in a nice bar plot
 #TODO represent the data in a customized way, so that it is possible to see the data visually. Maybe make barplots, that show how many of the samples have the different categories for each variable. So like in odor 2000 stinky 3000 føj for helvede. and so on. 
 #Compare the AUC for all the algorithms. 
@@ -76,6 +78,23 @@ summary(mushroom_data)
 
 To have some test data and some training data, I do a simple split, so that we can build a model on a part of the data and validate on the other part of the data. 
 
+
+##Gaining insight into the data
+```{r barplots, include =TRUE}
+
+for (i in 2:22) {
+index <- i
+names = c(rep("e",length(which(mushroom_data[,1] == "e"))),rep("p",length(which(mushroom_data[,1] == "p"))))
+value = c(mushroom_data[which(mushroom_data[,1] =="e"),index],mushroom_data[which(mushroom_data[,1] =="p"),index])
+data = data.frame(names,value)
+attribute_boxplot <- qplot( x=names , y=value , data=data , geom=c("boxplot","jitter") , fill=names)
+?qplot
+print(attribute_boxplot + ggtitle(paste(names(mushroom_data[index]), "distribution in edible and poisonous mushrooms"), levels(mushroom_data[,]))) 
+}
+```
+
+#TODO Write some awesome comments about the different attributes.
+
 ##Splitting
 ```{r splitting, include=TRUE}
   split_index <- ceiling(nrow(mushroom_data) * 0.8)
@@ -110,7 +129,7 @@ As can be seen here from the confusion matrix, there are only few true positives
 
 ##Random Forest Classifier 
 ```{r random_forest, include = TRUE}
-  rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=10)
+  rf_model <- randomForest(Class ~., data = train_data, importance=TRUE, proximity=TRUE, ntree=30)
 
 #rf_model$predicted
   rf_pred <- predict(rf_model, test_data)
@@ -122,7 +141,9 @@ As can be seen here from the confusion matrix, there are only few true positives
 
 
 
-Here we can see, that with the split at 90%, the model still performs impeccable. If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
+Here we can see, that with the split at 80%, the model performs impeccable. The random forest only takes the number of trees as argument, and here it was possible to obtain a perfect classification, with an accuracy of 1, when building 30 trees. The number of trees were incremented until a satisfying result were achieved, 
+
+If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
 
 To see which attributes are important for the decision tree's we can make a variable importance plot. 
 
@@ -133,6 +154,80 @@ varImpPlot(rf_model,main ="Variable Importance Plot")
 
 In the variable importance plot, we can interpret the MeanDecreaseGini for a variable, as the variables ability to decrease the impurity. The mean is then how well this variable decrease the impurity on average over it splits. It is clear that *odor* is by far the most important variable, and then *gillcolor* and *stalksurfaceabovering*. The importance of the variables, can be used to decrease the dimensionality, by only using the most important variables, this will decrease the variance of the model, and then be a part of avoiding overfitting the model, or as a tool to decrease computational complexity. 
 
+
+##Plotting the randomForest
+```{r rf_plot, include = TRUE}
+library(dplyr)
+library(ggraph)
+library(igraph)
+#This function is kindly taken from https://shiring.github.io/machine_learning/2017/03/16/rf_plot_ggraph
+tree_func <- function(final_model, 
+                      tree_num) {
+  
+  # get tree by index
+  tree <- randomForest::getTree(final_model, 
+                                k = tree_num, 
+                                labelVar = TRUE) %>%
+    tibble::rownames_to_column() %>%
+    # make leaf split points to NA, so the 0s won't get plotted
+    mutate(`split point` = ifelse(is.na(prediction), `split point`, NA))
+  
+  # prepare data frame for graph
+  graph_frame <- data.frame(from = rep(tree$rowname, 2),
+                            to = c(tree$`left daughter`, tree$`right daughter`))
+  
+  # convert to graph and delete the last node that we don't want to plot
+  graph <- graph_from_data_frame(graph_frame) %>%
+    delete_vertices("0")
+  
+  # set node labels
+  V(graph)$node_label <- gsub("_", " ", as.character(tree$`split var`))
+  V(graph)$leaf_label <- as.character(tree$prediction)
+  V(graph)$split <- as.character(round(tree$`split point`, digits = 2))
+  
+  # plot
+  plot <- ggraph(graph, 'dendrogram') + 
+    theme_bw() +
+    geom_edge_link() +
+    geom_node_point() +
+    geom_node_text(aes(label = node_label), na.rm = TRUE, repel = TRUE) +
+    geom_node_label(aes(label = split), vjust = 2.5, na.rm = TRUE, fill = "white") +
+    geom_node_label(aes(label = leaf_label, fill = leaf_label), na.rm = TRUE, 
+					repel = TRUE, colour = "white", fontface = "bold", show.legend = FALSE) +
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.background = element_blank(),
+          plot.background = element_rect(fill = "white"),
+          panel.border = element_blank(),
+          axis.line = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          plot.title = element_text(size = 18))
+  
+  print(plot)
+}
+
+tree_num <- 1
+
+tree_func(rf_model, tree_num)
+
+
+
+```
+Here's a tree to give insigt to how a tree in our plot looks like. We have so few trees, that it is possible to get an overview of the entire randomForest model. 
+
+
+##Confusion Matrices for model comparison 
+The confusion matrices are put here, for comparison. 
+
+![Caption](confusion_nb.PNG) 
+![Caption](confusion_rf.PNG)
+
+## Precision, recall, f1
+#TODO insert precision, recall and f1 measure
 
 ##Roc curves for model comparison
 Now we have seen some classifiers, let's plot some ROC curves. 
