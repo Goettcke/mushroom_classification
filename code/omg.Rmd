@@ -1,8 +1,10 @@
 ---
-title: "4 hours of fun, assignment 4 DM855"
-author: "Jonatan Møller Gøttcke"
+title: "Assignment 3 - Classification Study, DM855"
+author: "Jonatan MÃ¸ller GÃ¸ttcke"
 date: "2018 M05 3"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # This is for general case setting working directory.
 ```{r setup, include=FALSE}
@@ -29,14 +31,10 @@ library(igraph)
 library(ggraph)
 library(class) # Order is important (masks knn function from igraph)
 library(nnet)
- #x <- summary(test_data)
-#x[1:2]
-#TODO Write conclusion which  sums the insights, and shows future work, that could be done.
-#Write about the selection of methods, and why these precisely were chosen.
 ``` 
 
 #Reasoning for choosing the dataset 
-The mushroom dataset, is an older dataset from 1987 and is quite well studied. It is classified as a classification dataset on the UCI website, because it contains labled data, and has been used in many classification studies. It is interesting because it only contains nominal/categorical data, and my experience with nominal data is limited. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform well in this domain, unlike some of the other models we have seen in the course such as Naïve Bayes. The dataset was also chosen because of the relatively high dimensionality and relatively high number of samples.      
+The mushroom dataset, is an older dataset from 1987 and is quite well studied. It is classified as a classification dataset on the UCI website, because it contains labeled data, and has been used in many classification studies. It is interesting because it only contains nominal/categorical data, and my experience with nominal data is limited. In addition to being kind of a mycologist myself, and having a personal interest in solving this classifiation problem (to avoid being poisoned), I also expect decision trees to perform well in this domain, unlike some of the other models we have seen in the course such as Naïve Bayes. The dataset was also chosen because of the relatively high dimensionality and relatively high number of samples.      
 
 
 ## Loading data
@@ -48,7 +46,7 @@ length(names)
 ncol(mushroom_data)
 
 
-colnames(mushroom_data) = names #Renaming so we know this is the Class, and what the attributes are. Could also just have changed in the file, but in this way the reader can tag along. 
+colnames(mushroom_data) = names #Renaming so we know what is class label, and which are attributes. Could also just have changed in the file, but in this way the reader can tag along. 
 colnames(mushroom_data)
 
 ```
@@ -61,13 +59,13 @@ set.seed(123) #Setting the random seed, for reproducibility
 ``` 
 
 So we have two classes edible and poisonous. We have 51.17 percent of the positive (edible class), so approximately equal class frequencies. 
-Here we can see that column 17 only includes attributes with the value p, so this is a bit useless, and the randomForest algorithm "rf", as used in crossvalidation can handle this, so these are omitted. This attribute describes the veil-type which is a either partial or universal. In mushrooms such as the *amanita caesarea* the veil is universal when the musfhroom is young, and is broken as the mushroom grows. Ths is very common for adult mushrooms, and some like the famous *fly amanita* or as known by mycologist *amanita muscaria* has a very visible partial veil, which is the white dots on the red cap, that makes it so characteristic. It would be outside of the scope of this task to give more insight into the variables, but the reader can find more information here <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names>
+Here we can see that column 17 (veiltype) only includes attributes with the value p, so this is a bit useless, and the randomForest algorithm, as used in can't handle this, so these are omitted. This attribute describes the veil-type which is either partial or universal. In mushrooms such as the *amanita caesarea* the veil is universal when the mushroom is young, and is broken as the mushroom grows. Ths is very common for adult mushrooms, and some like the famous *fly amanita* or as known by mycologist *amanita muscaria* has a very visible partial veil, which is the white dots on the red cap, that makes it so characteristic. It would be outside of the scope of this task to give more insight into the variables, but the reader can find more information here <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names>
 
 
 
 ```{r dropping_values, include=TRUE}
 indices_without_17 <- c(1:16,18:ncol(mushroom_data))
- # The 17'th column only contains 1 attribute value, so it is omitted, because is useless information. 
+ # The 17'th column only contains 1 attribute value, so it is omitted. 
 mushroom_data <- mushroom_data[,indices_without_17]
 mushroom_data_nolabel <- mushroom_data[,2:ncol(mushroom_data)]
 summary(mushroom_data)
@@ -77,6 +75,7 @@ To have some test data and some training data, I do a simple split, so that we c
 
 
 ##Gaining insight into the data
+To gain insight into this relatively high dimensional data, many plots were made, these barplots, were very useful. I've attached all of them, but don't hesitate to skip them, if not interested. 
 ```{r barplots, include =TRUE}
 
 for (i in 2:22) {
@@ -93,7 +92,7 @@ print(attribute_boxplot + ggtitle(paste(names(mushroom_data[index]), "distributi
 
 ###Attributes
 Here the attributes are shown as boxplots, to see how the values for each attribute are distributed dependant on the class label. This way of plotting the data gives us a clear insight into how we can distinguish poisonous mushrooms from edible mushrooms, attribute by attribute and give an indication of what the classifiers will probably learn. The data is plotted in this way because it is nominal/categorical, and it doesn't make much sense to plot it in a cartesian coordinate system. Another reason for plotting the data in this manner, is because of the high dimensionality, so if we did 2-dimensional plots, there would be 22 choose 2 (231) combinations of plots to show. 
-Some very similar attributes are *capcolor* and *capsurface* and very dissimilar attributes are for instance *odor* where some oder's in eadible mushrooms, are not at all present in poisonous mushrooms, for instance the anis smell (value 4), if this attribute is present, then we're sure, that the mushroom is edible. The different values for each attribute here depicted by numbers, are just numeric representation of the levels. For more insigt into the attribute levels, look at <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names> . 
+Some very similar attributes are *capcolor* and *capsurface* and very dissimilar attributes are for instance *odor* where some oder's in eadible mushrooms, are not at all present in poisonous mushrooms, for instance the anis smell (value 4), if this attribute is present, then we're sure, that the mushroom is edible. The different values for each attribute here depicted by numbers, are just numeric representations of the levels. For more insigt into the attribute levels, look at <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names> . 
 
 ##Defining useful functions
 ```{r useful_functions, include=TRUE} 
@@ -117,31 +116,32 @@ eval_summary <- function(confucius_matrix){
   test_data <- mushroom_data[(split_index +1):nrow(mushroom_data),]
 ```
 
-Splitting the data into a training data-set and a test set, is done because all the tested algorithms, can work with this partitioning, the cross-validation implementations in R might not have support for all of the tested algorithms, but this is of course also an option. The split results in a roughly 2/3 majority of negative labled instances in the test data, but as this is dichotomous classification and the correct prediction of either is seen as a correct classification, hence this is not seen as a bias.   
+Splitting the data into a training data-set and a test set, is done because all the tested algorithms, can work with this partitioning, the cross-validation implementations in R might not have support for all of the tested algorithms, but this is of course also an option. The split results in a roughly 2/3 majority of negative labled instances in the test data, but as this is dichotomous classification and the correct prediction of either class is seen as a correct classification, hence this imbalance in the test set is not seen as a noteworthy bias, although this also skews the balance of the training set (a bit).   
+
+##Reasoning for choosing these classifiers. 
+Naïve Bayes was chosen because it is a classifier, that uses probabilistic estimates to classify new query instances, based on the model build on the training data. This should work well with nominal data, because the distances between data points are probabilistic estimates and not *LP* distances. Knn was chosen because it is generally a good and simple classifier, and because the author was curious about the performance on nominal data, and how resources apply knn to nominal data. 
+RandomForest in particular was chosen because it was assumed that decision trees in general would be well suited for this task, because of their ability to handle few categori attributes and large dimensional datasets. Random Forest is a highly applicable algorithm used as a go to standard in many research areas  (such as bioinformatics). 
 
 ## Naive Bayes Classifier
 ```{r NaïveBayes, include=TRUE}
 model <- naiveBayes(Class ~ .,data = train_data)
 nb_pred <- predict(model,test_data)
-correct_predictions <- nb_pred == test_data[,1]
-#correct_predictions
-t_correct_predictions <- as.data.frame(correct_predictions) #This is to get an overview of which are correctly classified and which are incorrectly classified. 
-length(which(correct_predictions == TRUE %in% t_correct_predictions)) #Counting the number of values that are classified correctly. 
 
 
 nb_avg_error <- mean(nb_pred != test_data[,1])
-nb_avg_error # Just another evaluation measure
+print(paste("avg_error",nb_avg_error)) # Just another evaluation measure
 
 nb_confucius_matrix <- confusionMatrix(
                                       factor(nb_pred),
                                       factor(test_data[,1]))
-#nb_confucius_matrix # To output the result in comparison with the target. 
+nb_confucius_matrix # To output the result in comparison with the target.
+print(nb_avg_error)
 eval_summary(nb_confucius_matrix)
 
 ```
 
 
-As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making precise classifiers, cause here we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. The precision is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible. 
+As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making precise classifiers, cause with Naïve Bayes applied on this dataset we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. The precision is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible. 
 
 ##Knn classifier 
 ```{r Knn, include = TRUE} 
@@ -170,20 +170,16 @@ knn_pred <- knn(knn_train_data,knn_test_data, target, k = optimal_k)
 #knn_pred # If we want to see the predictions
 
 knn_confucius_matrix <- confusionMatrix(factor(knn_pred),factor(test_data[,1]))
-knn_confucius_matrix 
-
-knn_precision <- precision(knn_confucius_matrix)
-knn_recall <- recall(knn_confucius_matrix) 
-knn_f1_measure <- f1_measure(knn_confucius_matrix)
-knn_accuracy <- f1_measure(knn_confucius_matrix)
-
 
 knn_avg_error <- mean(knn_pred != test_data[,1])
-knn_avg_error
+
+knn_confucius_matrix 
+print(knn_avg_error)
 eval_summary(knn_confucius_matrix)
 
 ```
 
+In the confusion matrix, it is clear that Knn, gives us a fairly decent classification, but for this specific case, we are less interested in accuracy and more interested in precision, so the 37 false positives resulting in a low nineties precision, is unacceptable. 
 Choosing the right K in the K nearest neighbor classifier is a hard task. Duda et al. popularized, that a good rule of thumb is to take the square root of the number of training instances. An interval around this rule of thumb has been explored, but surprisingly found to be very limiting. Hence a larger interval, has been used to find a good k. This is based on the accuracy and hundreds of runs have been performed to find the best k. A perhaps more application specific evaluation would be to minimize the number of false positives / maximize the precision, because false positives in this specific case are potentially lethal. 
 
 
@@ -212,19 +208,21 @@ paste("Optimal nr_of_trees: ", optimal_nr_trees, " accuracy: ", accuracy_list[op
 #rf_model$predicted
 rf_pred <- predict(rf_model, test_data)
 rf_confucius_matrix <- confusionMatrix(factor(rf_pred),test_data[,1])
-rf_confucius_matrix
+#rf_confucius_matrix
   
-avg_error <- mean(rf_pred != test_data[,1])
-avg_error # Just another evaluation measure
+rf_avg_error <- mean(rf_pred != test_data[,1])
+rf_avg_error # Just another evaluation measure
+
+rf_confucius_matrix
 eval_summary(rf_confucius_matrix)  
   
 ``` 
 
 
 
-With a split at 80% training data and 20% test, the model performs impeccable i.e perfectly. The random forest only takes the number of trees as argument. The number of trees were incremented until a satisfying result were achieved, as can be seen in the barplot.  
-
-#If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. 
+With a split at 80% training data and 20% test, the model performs impeccable i.e perfectly. The random forest only takes the number of trees as argument. The number of trees was incremented until a satisfying result was achieved, as can be seen in the barplot.  
+<!--
+If we split at 60% and test on 40 percent of the data, then we still obtain a decent classifier however, we have a fairly low sensitivity at 89.91% meaning if we take tp/(tp+fp), meaning out of the total amount of times our classifier recommends us to eat the mushroom, we don't get poisoned in 89% of the time. Now if we randomly pick 10 mushrooms, and use our classifier to predict if we should eat them, and let's say there's an even probability for the mushrooms being poisonous and edible, then we have a 34% chance of not being poisoned, so this is not the greatest classifier. -->
 
 To see which attributes are important for the decision trees we can make a variable importance plot. 
 
@@ -237,7 +235,7 @@ In the variable importance plot, we can interpret the MeanDecreaseGini for a var
 
 
 ##Plotting the randomForest
-```{r rf_plot, include = TRUE}
+```{r rf_plot, include = F}
 library(dplyr)
 library(ggraph)
 library(igraph)
@@ -297,21 +295,18 @@ tree_num <- 1
 ```{r plotting_rf, include = TRUE}
 tree_func(rf_model, tree_num)
 ```
-The tree here gives a bit of insigt to how a tree the randomForrest looks like. With this small number of trees used to achieve perfect classification it is possible to get insigt into how the randomForrest makes decisions. 
+The tree here gives a helpful interpretation to how a tree in the randomForrest behaves.  With the small number of trees used to achieve perfect classification it is possible to see exactly how the randomForrest makes decisions. 
 
 
 ##Confusion Matrices for model comparison 
 The confusion matrices are put here, for comparison. 
 
-![Caption](confusion_nb.PNG) 
-![Caption](confusion_knn.PNG)
-![Caption](confusion_rf.PNG)
-
-## Precision, recall, f1
-#TODO insert precision, recall and f1 measure
+![](confusion_nb.PNG) 
+![](confusion_knn.PNG)
+![](confusion_rf.PNG)
 
 ##Results 
-Now we have seen some classifiers, let's plot some ROC curves. 
+In this section the results are summarized.  
 ```{r roc_curves,include=TRUE}
 test_data_t <- as.numeric(test_data[,1] == "e")
 
@@ -328,7 +323,7 @@ knn_pred_t <- as.numeric(knn_pred == "e")
 knn_pred_obj <- prediction(knn_pred_t, test_data_t)
 knn_performance <- performance(knn_pred_obj,measure = "tpr", x.measure = "fpr")
 
-plot(knn_performance,main = "ROC Curve for RandomForest on Mushroom data",col = "blue",lwd=3)
+plot(knn_performance,main = "ROC Curve for K Nearest Neighbors on Mushroom data",col = "blue",lwd=3)
 abline(a = 0, b = 1, lwd = 2, lty = 2)
 knn_roc_auc <- performance(knn_pred_obj,measure = "auc")
 knn_roc_auc@y.values # Gives the auc value
@@ -347,8 +342,12 @@ rf_roc_auc <- performance(rf_pred_obj,measure = "auc")
 rf_roc_auc@y.values # Gives the auc value
 
 ```
-![Caption](eval_summary.PNG)
+In these ROC curves, it is clear that all of the classifiers are decent, and that knn and randomForest are best.
+
+![](eval_summary.PNG)
+
+In this study the importance of classifier precision is emphasized because misclassifying a poisonous mushroom can be lethal. Both Naïve Bayes and kNN have a to low precision, to be acceptable classifiers in this domain. Maybe this would be different if the classes were completely balanced (especially for Naïve Bayes), and k-fold cross-validation had been performed to train the models, instead of just the simple split.  
 
 
 ##Conclusion 
-Overall in this mini-study, the clear winner is the *randomForest*. There are many other methods, that could perform equivalently well, but it's interesting that Naïve Bayes performs so poorly in comparison with knn and randomForest. In this mushroom datasets, it was shown, that odor is a very important feature 
+In this mini-study, the clear winner is the *randomForest*. There are many other methods, that could perform equivalently well, but the study was kept mini, as requested. Other methods to include could be Boosting trees like *XGBoost* and neural networks. It is interesting that Naïve Bayes performs so poorly in comparison with knn and randomForest. Future work could be to use a better translation of nominal data into numerical data that knn can understand, and to use cross-validation. In this mushroom dataset, it was shown, that odor is a very important feature and that tuning the classifiers paramters to perform well can be done, by trying large intervals for solutions. The results are very useful, and I could consider trying this on real data, that I gather myself, but some of the attributes are difficult to assess, like the most important attribute odor.   
