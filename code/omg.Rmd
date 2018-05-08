@@ -1,5 +1,5 @@
 ---
-title: "Assignment 3 - Classification Study, DM855"
+title: "Assignment 3 - Mushroom Classification Study, DM855"
 author: "Jonatan MÃ¸ller GÃ¸ttcke"
 date: "2018 M05 3"
 output:
@@ -59,7 +59,7 @@ set.seed(123) #Setting the random seed, for reproducibility
 ``` 
 
 So we have two classes edible and poisonous. We have 51.17 percent of the positive (edible class), so approximately equal class frequencies. 
-Here we can see that column 17 (veiltype) only includes attributes with the value p, so this is a bit useless, and the randomForest algorithm, as used in can't handle this, so these are omitted. This attribute describes the veil-type which is either partial or universal. In mushrooms such as the *amanita caesarea* the veil is universal when the mushroom is young, and is broken as the mushroom grows. Ths is very common for adult mushrooms, and some like the famous *fly amanita* or as known by mycologist *amanita muscaria* has a very visible partial veil, which is the white dots on the red cap, that makes it so characteristic. It would be outside of the scope of this task to give more insight into the variables, but the reader can find more information here <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names>
+Here we can see that column 17 (veiltype) only includes attributes with the value p, so this is a bit useless, and the randomForest algorithm can't handle this, so these are omitted. This attribute describes the veil-type which is either partial or universal. In mushrooms such as the *amanita caesarea* the veil is universal when the mushroom is young, and is broken as the mushroom grows. Ths is very common for adult mushrooms, and some like the famous *fly amanita* or as known by mycologist *amanita muscaria* has a very visible partial veil, which is the white dots on the red cap, that makes it so characteristic. It would be outside of the scope of this task to give more insight into the values of the variables, but the reader can find more information here <https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names>
 
 
 
@@ -116,7 +116,7 @@ eval_summary <- function(confucius_matrix){
   test_data <- mushroom_data[(split_index +1):nrow(mushroom_data),]
 ```
 
-Splitting the data into a training data-set and a test set, is done because all the tested algorithms, can work with this partitioning, the cross-validation implementations in R might not have support for all of the tested algorithms, but this is of course also an option. The split results in a roughly 2/3 majority of negative labled instances in the test data, but as this is dichotomous classification and the correct prediction of either class is seen as a correct classification, hence this imbalance in the test set is not seen as a noteworthy bias, although this also skews the balance of the training set (a bit).   
+Splitting the data into a training data-set and a test set, is done because all the tested algorithms, can work with this partitioning, the cross-validation implementations in R might not have support for all of the tested algorithms, but this is of course also an option. The split results in a roughly 2/3 majority of negative labeled instances in the test data, but as this is dichotomous classification and the correct prediction of either class is seen as a correct classification, hence this imbalance in the test set is not seen as a noteworthy bias, although this also skews the balance of the training set (a bit).   
 
 ##Reasoning for choosing these classifiers. 
 Naïve Bayes was chosen because it is a classifier, that uses probabilistic estimates to classify new query instances, based on the model build on the training data. This should work well with nominal data, because the distances between data points are probabilistic estimates and not *LP* distances. Knn was chosen because it is generally a good and simple classifier, and because the author was curious about the performance on nominal data, and how resources apply knn to nominal data. 
@@ -141,7 +141,7 @@ eval_summary(nb_confucius_matrix)
 ```
 
 
-As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making precise classifiers, cause with Naïve Bayes applied on this dataset we're only 72.98% certain that the prediction of an edible mushroom is not poisonous. The precision is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible. 
+As can be seen here from the confusion matrix, there are only few true positives, when predicting if the mushrooms are edible. Which means we can't rely on our classification. The classification problem illustrates the necessity of making precise classifiers, cause with Naïve Bayes applied on this dataset we're only 72.98% certain that the prediction of an edible mushroom is not poisonous, is true. The precision is calculated tp/(tp+fp), so the amount of true positives i.e. edible mushroms predicted as edible, out of total amount of mushrooms predicted as edible. 
 
 ##Knn classifier 
 ```{r Knn, include = TRUE} 
@@ -149,8 +149,6 @@ knn_train_data <- as.data.frame(sapply(train_data[,2:ncol(train_data)],as.intege
 knn_test_data <- as.data.frame(sapply(test_data[,2:ncol(train_data)],as.integer))
 target <- train_data[,1]
 
-max_val = 0
-best_K = -1
 
 measure_list <- c()
 for (i in 1:300) {
@@ -161,7 +159,7 @@ for (i in 1:300) {
 }
 
 optimal_k <- which.is.max(measure_list)
-
+measure_list
 paste("Optimal k:", optimal_k, " accuracy:", measure_list[optimal_k])
 max(measure_list)
 
@@ -180,7 +178,7 @@ eval_summary(knn_confucius_matrix)
 ```
 
 In the confusion matrix, it is clear that Knn, gives us a fairly decent classification, but for this specific case, we are less interested in accuracy and more interested in precision, so the 37 false positives resulting in a low nineties precision, is unacceptable. 
-Choosing the right K in the K nearest neighbor classifier is a hard task. Duda et al. popularized, that a good rule of thumb is to take the square root of the number of training instances. An interval around this rule of thumb has been explored, but surprisingly found to be very limiting. Hence a larger interval, has been used to find a good k. This is based on the accuracy and hundreds of runs have been performed to find the best k. A perhaps more application specific evaluation would be to minimize the number of false positives / maximize the precision, because false positives in this specific case are potentially lethal. 
+Choosing the right K in the K nearest neighbor classifier is a hard task. Duda et al. popularized, that a good rule of thumb is to take the square root of the number of training instances. An interval around this rule of thumb has been explored, but surprisingly found to be very limiting. Hence a larger interval, has been used to find a good k. This is based on the accuracy and hundreds of runs have been performed to find the best k. To our big surprise, k = 1, gives the best accuracy. A perhaps more application specific evaluation would be to minimize the number of false positives / maximize the precision, because false positives in this specific case are potentially lethal. 
 
 
 ##Random Forest Classifier 
